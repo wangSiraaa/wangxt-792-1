@@ -741,7 +741,6 @@ function App() {
                           className="btn btn-secondary" 
                           onClick={() => handleOrgToggle(item.id, 'children')}
                           data-testid={`assign-children-${item.id}`}
-                          disabled={item.condition === 'damaged'}
                         >
                           👶 分配儿童机构
                         </button>

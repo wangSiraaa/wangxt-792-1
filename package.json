@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node test/verify.js"
+    "test": "node test/verify.cjs"
   },
   "dependencies": {
     "react": "^18.2.0",
