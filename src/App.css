@@ -589,6 +589,82 @@ body {
   50% { background: rgba(232, 168, 56, 0.3); }
 }
 
+.compare-count-badge {
+  background: var(--primary);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+
+.compare-panel {
+  background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 2px solid var(--primary-light);
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.compare-card {
+  background: white;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.compare-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.compare-card-header {
+  background: var(--primary);
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.compare-card-body {
+  padding: 16px;
+}
+
+.compare-row {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.compare-row:last-child {
+  border-bottom: none;
+}
+
+.compare-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 13px;
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.compare-selected td {
+  background: rgba(45, 90, 39, 0.08) !important;
+}
+
 @media (max-width: 768px) {
   .scan-section {
     grid-template-columns: 1fr;
@@ -606,5 +682,9 @@ body {
   .tab {
     flex: none;
     white-space: nowrap;
+  }
+
+  .compare-grid {
+    grid-template-columns: 1fr;
   }
 }

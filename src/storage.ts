@@ -1,10 +1,11 @@
-import type { DonationItem, DuplicateScanRecord, HandoverList, SortingBox } from './types'
+import type { DonationItem, DuplicateScanRecord, HandoverList, SortingBox, CompareState } from './types'
 
 const STORAGE_KEYS = {
   ITEMS: 'donation_items',
   HANDOVER_LISTS: 'handover_lists',
   DUPLICATE_SCANS: 'duplicate_scans',
-  SORTING_BOXES: 'sorting_boxes'
+  SORTING_BOXES: 'sorting_boxes',
+  COMPARE_STATE: 'compare_state'
 }
 
 export const storage = {
@@ -95,6 +96,20 @@ export const storage = {
       box.itemCount = Math.max(0, box.itemCount + delta)
       localStorage.setItem(STORAGE_KEYS.SORTING_BOXES, JSON.stringify(boxes))
     }
+  },
+
+  getCompareState(): CompareState {
+    const data = localStorage.getItem(STORAGE_KEYS.COMPARE_STATE)
+    if (data) return JSON.parse(data)
+    return { selectedItemIds: [], isCompareMode: false }
+  },
+
+  saveCompareState(state: CompareState): void {
+    localStorage.setItem(STORAGE_KEYS.COMPARE_STATE, JSON.stringify(state))
+  },
+
+  clearCompareState(): void {
+    localStorage.removeItem(STORAGE_KEYS.COMPARE_STATE)
   },
 
   clearAll(): void {

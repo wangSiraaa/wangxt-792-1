@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { DonationItem, ItemCondition, OrganizationType, SortingBox } from './types'
+import type { DonationItem, ItemCondition, OrganizationType, SortingBox, CompareState } from './types'
 import { storage } from './storage'
 import { businessRules, generateId } from './rules'
 import './App.css'
@@ -44,10 +44,43 @@ function App() {
   const [editingItem, setEditingItem] = useState<DonationItem | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [reviewItem, setReviewItem] = useState<DonationItem | null>(null)
+  const [compareState, setCompareState] = useState<CompareState>({ selectedItemIds: [], isCompareMode: false })
 
   useEffect(() => {
     loadData()
+    setCompareState(storage.getCompareState())
   }, [])
+
+  const toggleCompareMode = useCallback(() => {
+    const newState = { ...compareState, isCompareMode: !compareState.isCompareMode }
+    if (!newState.isCompareMode) {
+      newState.selectedItemIds = []
+    }
+    setCompareState(newState)
+    storage.saveCompareState(newState)
+  }, [compareState])
+
+  const toggleCompareItem = useCallback((itemId: string) => {
+    let newSelectedIds: string[]
+    if (compareState.selectedItemIds.includes(itemId)) {
+      newSelectedIds = compareState.selectedItemIds.filter(id => id !== itemId)
+    } else {
+      newSelectedIds = [...compareState.selectedItemIds, itemId]
+    }
+    const newState = { ...compareState, selectedItemIds: newSelectedIds }
+    setCompareState(newState)
+    storage.saveCompareState(newState)
+  }, [compareState])
+
+  const clearComparison = useCallback(() => {
+    const newState = { selectedItemIds: [], isCompareMode: false }
+    setCompareState(newState)
+    storage.saveCompareState(newState)
+  }, [])
+
+  const getSelectedCompareItems = useCallback(() => {
+    return items.filter(item => compareState.selectedItemIds.includes(item.id))
+  }, [items, compareState.selectedItemIds])
 
   const loadData = () => {
     setItems(storage.getItems())
@@ -497,7 +530,102 @@ function App() {
         {activeTab === 'sorting' && (
           <div>
             <div className="card">
-              <h3 className="card-title">📦 物品分拣管理</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h3 className="card-title" style={{ marginBottom: 0 }}>📦 物品分拣管理</h3>
+                <div className="btn-group">
+                  <button
+                    className={`btn ${compareState.isCompareMode ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={toggleCompareMode}
+                    data-testid="toggle-compare-btn"
+                  >
+                    {compareState.isCompareMode ? '🔳 退出对比' : '🔲 候选对比'}
+                  </button>
+                  {compareState.selectedItemIds.length > 0 && (
+                    <>
+                      <span className="compare-count-badge" data-testid="compare-count">
+                        已选 {compareState.selectedItemIds.length} 件
+                      </span>
+                      <button className="btn btn-secondary" onClick={clearComparison}>
+                        清空选择
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {compareState.selectedItemIds.length >= 2 && (
+                <div className="compare-panel" data-testid="compare-panel">
+                  <h4 style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    📊 候选物品对比
+                  </h4>
+                  <div className="compare-grid">
+                    {getSelectedCompareItems().map(item => (
+                      <div key={item.id} className="compare-card" data-testid={`compare-card-${item.id}`}>
+                        <div className="compare-card-header">
+                          <span style={{ fontWeight: 600 }}>{item.barcode}</span>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ padding: '2px 8px', fontSize: 11 }}
+                            onClick={() => toggleCompareItem(item.id)}
+                          >
+                            ✕ 移除
+                          </button>
+                        </div>
+                        <div className="compare-card-body">
+                          <div className="compare-row">
+                            <span className="compare-label">类别:</span>
+                            <span>{item.category}</span>
+                          </div>
+                          <div className="compare-row">
+                            <span className="compare-label">成色:</span>
+                            <span className={`badge badge-${item.condition}`}>
+                              {CONDITIONS.find(c => c.value === item.condition)?.label}
+                            </span>
+                          </div>
+                          <div className="compare-row">
+                            <span className="compare-label">适配机构:</span>
+                            <div className="tag-group" style={{ flex: 1 }}>
+                              {item.suitableOrgs.length > 0 ? item.suitableOrgs.map(org => (
+                                <span key={org} className="tag selected" style={{ padding: '2px 8px', fontSize: 11 }}>
+                                  {ORG_TYPES.find(t => t.value === org)?.label}
+                                </span>
+                              )) : <span style={{ color: 'var(--text-secondary)' }}>未设置</span>}
+                            </div>
+                          </div>
+                          <div className="compare-row">
+                            <span className="compare-label">限制标签:</span>
+                            <span>{item.restrictionTags.join(', ') || '无'}</span>
+                          </div>
+                          <div className="compare-row">
+                            <span className="compare-label">分拣箱:</span>
+                            <span>{sortingBoxes.find(b => b.id === item.sortingBox)?.name || '未分配'}</span>
+                          </div>
+                          <div className="compare-row">
+                            <span className="compare-label">状态:</span>
+                            <span className={`badge badge-${item.handoverStatus}`}>
+                              {item.handoverStatus === 'pending' && '待处理'}
+                              {item.handoverStatus === 'reviewing' && '待复核'}
+                              {item.handoverStatus === 'ready' && '可交接'}
+                              {item.handoverStatus === 'handed' && '已交接'}
+                            </span>
+                          </div>
+                          <div className="compare-row">
+                            <span className="compare-label">高价值:</span>
+                            <span>{item.isHighValue ? (item.isReviewed ? '✅ 已复核' : '⚠️ 待复核') : '否'}</span>
+                          </div>
+                          {item.notes && (
+                            <div className="compare-row">
+                              <span className="compare-label">备注:</span>
+                              <span style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>{item.notes}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {items.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
                   暂无物品，请先扫码录入
@@ -507,6 +635,22 @@ function App() {
                   <table className="item-list">
                     <thead>
                       <tr>
+                        {compareState.isCompareMode && (
+                          <th style={{ width: 50, textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={compareState.selectedItemIds.length === items.length && items.length > 0}
+                              onChange={(e) => {
+                                const newState = e.target.checked
+                                  ? { ...compareState, selectedItemIds: items.map(i => i.id) }
+                                  : { ...compareState, selectedItemIds: [] }
+                                setCompareState(newState)
+                                storage.saveCompareState(newState)
+                              }}
+                              data-testid="select-all-checkbox"
+                            />
+                          </th>
+                        )}
                         <th>条码</th>
                         <th>类别</th>
                         <th>成色</th>
@@ -518,7 +662,21 @@ function App() {
                     </thead>
                     <tbody>
                       {items.map(item => (
-                        <tr key={item.id} className={highlightedItemId === item.id ? 'highlight' : ''} data-testid={`item-row-${item.id}`}>
+                        <tr
+                          key={item.id}
+                          className={`${highlightedItemId === item.id ? 'highlight' : ''} ${compareState.selectedItemIds.includes(item.id) ? 'compare-selected' : ''}`}
+                          data-testid={`item-row-${item.id}`}
+                        >
+                          {compareState.isCompareMode && (
+                            <td style={{ textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={compareState.selectedItemIds.includes(item.id)}
+                                onChange={() => toggleCompareItem(item.id)}
+                                data-testid={`compare-checkbox-${item.id}`}
+                              />
+                            </td>
+                          )}
                           <td style={{ fontFamily: 'monospace', fontWeight: 500 }}>{item.barcode}</td>
                           <td>{item.category}</td>
                           <td>
@@ -558,18 +716,30 @@ function App() {
                           </td>
                           <td>
                             <div className="btn-group">
-                              {item.isHighValue && !item.isReviewed && (
-                                <button className="btn btn-warning" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => handleReview(item)}>
-                                  🔍 复核
+                              {compareState.isCompareMode ? (
+                                <button
+                                  className="btn btn-primary"
+                                  style={{ padding: '6px 10px', fontSize: 12 }}
+                                  onClick={() => toggleCompareItem(item.id)}
+                                >
+                                  {compareState.selectedItemIds.includes(item.id) ? '🔳 取消选择' : '🔲 加入对比'}
                                 </button>
+                              ) : (
+                                <>
+                                  {item.isHighValue && !item.isReviewed && (
+                                    <button className="btn btn-warning" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => handleReview(item)}>
+                                      🔍 复核
+                                    </button>
+                                  )}
+                                  <button 
+                                    className="btn btn-secondary" 
+                                    style={{ padding: '6px 10px', fontSize: 12 }}
+                                    onClick={() => setEditingItem(item)}
+                                  >
+                                    ✏️ 编辑
+                                  </button>
+                                </>
                               )}
-                              <button 
-                                className="btn btn-secondary" 
-                                style={{ padding: '6px 10px', fontSize: 12 }}
-                                onClick={() => setEditingItem(item)}
-                              >
-                                ✏️ 编辑
-                              </button>
                             </div>
                           </td>
                         </tr>

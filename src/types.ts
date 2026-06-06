@@ -45,3 +45,8 @@ export interface SortingBox {
   orgType: OrganizationType | 'mixed'
   itemCount: number
 }
+
+export interface CompareState {
+  selectedItemIds: string[]
+  isCompareMode: boolean
+}
